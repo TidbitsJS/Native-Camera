@@ -1,16 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import { StyleSheet, View, TouchableOpacity, Alert } from "react-native";
 import { Fontisto, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Camera } from "expo-camera";
+import * as MediaLibrary from "expo-media-library";
 
 export default function App() {
   const [hasPermission, setHasPermission] = useState(null);
   const [type, setType] = useState(Camera.Constants.Type.back);
+  const [cameraRef, setCameraRef] = useState(null);
+  const [mediaStatus, setMediaStatus] = useState(null);
 
   useEffect(() => {
     (async () => {
-      const { status } = await Camera.requestPermissionsAsync();
+      let { status } = await Camera.requestPermissionsAsync();
       setHasPermission(status === "granted");
+      let result = await MediaLibrary.requestPermissionsAsync();
+      console.log({ result });
+      setMediaStatus(result.status === "granted");
     })();
   }, []);
 
@@ -19,12 +25,22 @@ export default function App() {
   }
 
   if (hasPermission === false) {
-    return <Text>No access to camera</Text>;
+    return Alert.alert("No access to Camers", "Please grant us permission");
+  }
+
+  if (mediaStatus === false) {
+    return Alert.alert("No access to Media", "Please grant us permission");
   }
 
   return (
     <View style={{ flex: 1 }}>
-      <Camera style={{ flex: 1 }} type={type}>
+      <Camera
+        style={{ flex: 1 }}
+        type={type}
+        ref={(ref) => {
+          setCameraRef(ref);
+        }}
+      >
         <View
           style={{
             flex: 1,
@@ -56,13 +72,29 @@ export default function App() {
               >
                 <Fontisto name="camera" size={24} color="white" />
               </TouchableOpacity>
-              <View style={styles.capture}>
+              <TouchableOpacity
+                style={styles.capture}
+                onPress={async () => {
+                  if (cameraRef) {
+                    let photo = await cameraRef.takePictureAsync();
+                    console.log("photo", photo);
+                    const asset = await MediaLibrary.createAssetAsync(
+                      photo.uri
+                    );
+                    console.log("asset", asset);
+                    Alert.alert(
+                      "Saved to Album",
+                      "Check your beautiful capture in gallery"
+                    );
+                  }
+                }}
+              >
                 <MaterialCommunityIcons
                   name="camera-iris"
                   size={31}
                   color="white"
                 />
-              </View>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
